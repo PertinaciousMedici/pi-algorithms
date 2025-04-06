@@ -7,7 +7,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-;
 
 void print_out(const std::string& name, int mode, int elapsed);
 double round_num(double value, int digits);
