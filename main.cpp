@@ -15,6 +15,8 @@ double factorial(int number);
 double PI_ramanujan(int terms);
 double PI_gauss_legendre(int iterations);
 double PI_chudnovsky(int terms);
+double arc_tan(double x, int terms);
+double PI_taylor(int terms);
 
 std::mt19937 rng(std::random_device{}());
 std::uniform_real_distribution<double> distribution(0.0, 1.0);
@@ -59,7 +61,11 @@ int main() {
           return PI_gauss_legendre(30);
      });
 
-     const std::vector results{PI_1, PI_2, PI_3};
+     const double PI_4 = Utility::measure_time("Taylor", []() {
+          return PI_taylor(100000);
+     });
+
+     const std::vector results{PI_1, PI_2, PI_3, PI_4};
      std::cout << "\x1b[1;34m[END]:\x1b[34m Calculated PI a total of " << results.size() << " times.\n\x1b[0m";
      std::cout << std::flush;
 }
@@ -123,7 +129,6 @@ double PI_monte_carlo(const int total) {
                     local_in++;
                }
           }
-
           total_in += local_in;
      };
 
@@ -219,5 +224,25 @@ double PI_chudnovsky(const int terms) {
           sum += numerator / denominator;
      }
      const double PI = C / sum;
+     return round_num(PI, 6);
+}
+
+double arc_tan(const double x, const int terms) {
+     double sum{};
+     double power = x;
+     for (int i = 0; i < terms; i++) {
+          const int n = 2 * i + 1;
+          double term = power / n;
+          if (i % 2 != 0) term = -term;
+          sum += term;
+          power *= x * x;
+     }
+     return sum;
+}
+
+double PI_taylor(const int terms) {
+     const double arc_tan_1_5 = arc_tan(1.0 / 5.0, terms);
+     const double arc_tan_1_239 = arc_tan(1.0 / 239.0, terms);
+     const double PI = 16.0 * arc_tan_1_5 - 4.0 * arc_tan_1_239;
      return round_num(PI, 6);
 }
