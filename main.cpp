@@ -5,6 +5,7 @@
 #include <numbers>
 #include <random>
 #include <string>
+#include <thread>
 #include <vector>
 
 double round_num(double value, int digits);
@@ -26,7 +27,7 @@ int main() {
       *   Honestly makes me wish this was Zig, a f128 would come in handy here...
       */
      const double PI_1 = PI_leibniz(10000000);
-     const double PI_2 = PI_monte_carlo(10000000);
+     const double PI_2 = PI_monte_carlo(100000000);
      // const double PI_3 = PI_ramanujan(1);
      const double PI_4 = PI_gauss_legendre(20);
      // const double PI_5 = PI_chudnovsky(1);
@@ -76,15 +77,34 @@ double PI_leibniz(const int terms) {
  * Therefore T(n) = O(n), whereas space is O(1).
  */
 double PI_monte_carlo(const int total) {
-     int inside = 0;
-     for (int i = 0; i < total; i++) {
-          const double x = distribution(rng);
-          const double y = distribution(rng);
-          if (x * x + y * y <= 1.0) {
-               inside++;
+     const size_t thread_count = std::thread::hardware_concurrency();
+     const size_t it_per_thread = total / thread_count;
+     std::atomic<int> total_in{};
+
+     auto worker = [&](int iterations) {
+          int local_in{};
+
+          for (size_t i = 0; i < iterations; i++) {
+               const double x = distribution(rng);
+               const double y = distribution(rng);
+               if (x * x + y * y <= 1.0) {
+                    local_in++;
+               }
           }
+
+          total_in += local_in;
+     };
+
+     std::vector<std::thread> threads;
+     for (size_t i = 0; i < thread_count; i++) {
+          threads.emplace_back(worker, it_per_thread);
      }
-     const double PI = 4.0 * inside / total;
+
+     for (auto& thread : threads) {
+          thread.join();
+     }
+
+     const double PI = 4.0 * total_in / (it_per_thread * thread_count);
      return round_num(PI, 6);
 }
 
