@@ -7,7 +7,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+;
 
+void print_out(const std::string& name, int mode, int elapsed);
 double round_num(double value, int digits);
 double PI_leibniz(int terms);
 double PI_monte_carlo(int total);
@@ -19,6 +21,22 @@ double PI_chudnovsky(int terms);
 std::mt19937 rng(std::random_device{}());
 std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
+namespace Utility {
+     template<typename Func>
+     auto measure_time(const char* func_name, Func&& func) {
+          const std::string as_str = func_name;
+          const auto start = std::chrono::high_resolution_clock::now();
+          print_out(as_str, 0, 0);
+          const auto return_value = func();
+          const auto end = std::chrono::high_resolution_clock::now();
+          const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+          print_out(as_str, 1, duration.count());
+          const std::string output = std::format("\x1b[1;32m[OUTPUT]:\x1b[0m {}.", return_value);
+          std::cout << output << '\n';
+          return return_value;
+     }
+};
+
 int main() {
      /*
       *   Ramanujan and Chudnovsky overflow as they require arbitrary precision.
@@ -26,23 +44,34 @@ int main() {
       *   As it is not readily available in C++, I will not fix it.
       *   Honestly makes me wish this was Zig, a f128 would come in handy here...
       */
-     const double PI_1 = PI_leibniz(10000000);
-     const double PI_2 = PI_monte_carlo(100000000);
-     // const double PI_3 = PI_ramanujan(1);
-     const double PI_4 = PI_gauss_legendre(20);
-     // const double PI_5 = PI_chudnovsky(1);
+     const double PI_1 = Utility::measure_time("Leibniz", []() {
+          return PI_leibniz(10000000);
+     });
 
-     std::vector<double> PI_interpretations{PI_1, PI_2, PI_4};
+     const double PI_2 = Utility::measure_time("Monte Carlo", []() {
+          return PI_monte_carlo(100000000);
+     });
 
-     int counter{1};
+     const double PI_3 = Utility::measure_time("Legendre", []() {
+          return PI_gauss_legendre(30);
+     });
 
-     for (double value_of_pi : PI_interpretations) {
-          std::string output = std::format("\x1b[1;32m[Interpretation {}]:\x1b[0m {}.", counter, value_of_pi);
-          std::cout << output << '\n';
-          counter++;
-     }
-
+     const std::vector results{PI_1, PI_2, PI_3};
+     std::cout << "\x1b[1;34m[END]:\x1b[34m Calculated PI a total of " << results.size() << " times.\n\x1b[0m";
      std::cout << std::flush;
+}
+
+void print_out(const std::string& name, const int mode, const int elapsed) {
+     switch (mode) {
+          case 0:
+               std::cout << "\x1b[1;32m[STARTED]:\x1b[0m Processing \x1b[1;34m" << name << ".\x1b[0m\n";
+               break;
+          case 1:
+               std::cout << "\x1b[1;32m[ENDED]:\x1b[0m Processed \x1b[1;34m" << name << "'s equation\x1b[0m in \x1b[33m" << elapsed << "ms.\x1b[0m\n";
+               break;
+          default:
+               break;
+     }
 }
 
 double round_num(const double value, const int digits) {
