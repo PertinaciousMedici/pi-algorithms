@@ -104,7 +104,7 @@ double PI_monte_carlo(const int total) {
           thread.join();
      }
 
-     const double PI = 4.0 * total_in / (it_per_thread * thread_count);
+     const double PI = 4.0 * total_in / static_cast<double>(it_per_thread * thread_count);
      return round_num(PI, 6);
 }
 
