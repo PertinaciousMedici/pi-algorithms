@@ -213,7 +213,7 @@ double PI_gauss_legendre(const int iterations) {
  *   Iterations involve several factorials, large exponentiation, and high constants.
  *   Each iteration does as follows:
  *   - factorial(6i), factorial(3i), factorial(i)^3 → ~O(i)
- *   - pow(640320, 3i) → O(log(3i)) ≈ O(i)
+ *   - pow(640320, 3i) → O(log(3i)) ~= O(i)
  *   - so each iteration is ~O(i), total T(n) is roughly O(n^2)
  *   Time complexity: O(n^2), Space complexity: O(1)
  */
