@@ -10,6 +10,8 @@
 #include <thread>
 #include <vector>
 
+#define DESIRED_PRECISION 12
+
 double PI_leibniz(int terms);
 double PI_monte_carlo(int total);
 double factorial(int number);
@@ -19,6 +21,8 @@ double PI_chudnovsky(int terms);
 double arc_tan(double x, int terms);
 double PI_taylor(int terms);
 
+static int global_counter = 0;
+
 namespace Helpers {
      void print_out(const std::string& name, const int mode, const int elapsed) {
           switch (mode) {
@@ -26,7 +30,7 @@ namespace Helpers {
                     std::cout << "\x1b[1;32m[STARTED]:\x1b[0m Processing \x1b[1;34m" << name << ".\x1b[0m\n";
                     break;
                case 1:
-                    std::cout << "\x1b[1;32m[ENDED]:\x1b[0m Processed \x1b[1;34m" << name << "'s method\x1b[0m in \x1b[33m" << elapsed << "ms.\x1b[0m\n";
+                    std::cout << "\x1b[1;32m[ENDED]:\x1b[0m Processed \x1b[1;34m" << name << "'s method\x1b[0m in \x1b[33m" << elapsed << " microseconds.\x1b[0m\n";
                     break;
                default:
                     break;
@@ -49,8 +53,9 @@ namespace Utility {
           const auto return_value = func();
 
           const auto end = std::chrono::high_resolution_clock::now();
-          const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+          const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
           const auto as_num = duration.count();
+          global_counter = global_counter + as_num;
 
           Helpers::print_out(as_str, 1, as_num);
           const std::string output = std::format("\x1b[1;32m[OUTPUT]:\x1b[0m {}.", return_value);
@@ -88,7 +93,7 @@ int main() {
 
 
      const std::vector results{PI_1, PI_2, PI_3, PI_4, PI_5, PI_6};
-     std::cout << "\x1b[1;34m[END]:\x1b[34m Calculated PI a total of " << results.size() << " times.\n\x1b[0m";
+     std::cout << "\x1b[1;34m[END]:\x1b[34m Calculated PI a total of " << results.size() << " times. " << global_counter << " microseconds elapsed.\n\x1b[0m";
      std::cout << std::flush;
 }
 
@@ -101,13 +106,13 @@ int main() {
  */
 double PI_leibniz(const int terms) {
      double PI = 0;
+     double sign = 1.0;
      for (int i = 0; i < terms; i++) {
-          double sign = 1.0;
-          sign = i % 2 == 0 ? 1.0 : -1.0;
-          PI += sign / static_cast<double>(2 * i + 1);
+          PI += sign / (2.0 * i + 1.0);
+          sign = -sign;
      }
      PI *= 4.0;
-     return Helpers::round_num(PI, 6);
+     return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
 /*
@@ -119,9 +124,9 @@ double PI_leibniz(const int terms) {
  * Therefore T(n) = O(n), whereas space is O(1).
  */
 double PI_monte_carlo(const int total) {
-     const size_t thread_count = std::thread::hardware_concurrency();
+     const size_t thread_count = std::max<size_t>(1, std::thread::hardware_concurrency());
      const size_t it_per_thread = total / thread_count;
-     std::atomic<int> total_in{};
+     std::atomic<size_t> total_in{};
 
      auto worker = [&](int iterations) {
           thread_local std::mt19937 local_rng(std::random_device{}());
@@ -148,7 +153,7 @@ double PI_monte_carlo(const int total) {
      }
 
      const double PI = 4.0 * total_in / static_cast<double>(it_per_thread * thread_count);
-     return Helpers::round_num(PI, 6);
+     return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
 /*
@@ -185,7 +190,7 @@ double PI_ramanujan(const int terms) {
           sum += numerator / denominator;
      }
      const double PI = 9801.0 / (2 * std::numbers::sqrt2 * sum);
-     return Helpers::round_num(PI, 6);
+     return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
 /*
@@ -203,12 +208,13 @@ double PI_gauss_legendre(const int iterations) {
      for (int i = 0; i < iterations; i++) {
           const double a_next = (a + b) / 2;
           b = std::sqrt(a * b);
-          t -= p * std::pow(a - a_next, 2);
+          const double diff = a - a_next;
+          t -= p * (diff * diff);
           a = a_next;
           p *= 2;
      }
      const double PI = std::pow(a + b, 2) / (4 * t);
-     return Helpers::round_num(PI, 6);
+     return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
 /*
@@ -230,7 +236,7 @@ double PI_chudnovsky(const int terms) {
           sum += numerator / denominator;
      }
      const double PI = C / sum;
-     return Helpers::round_num(PI, 6);
+     return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
 /*
@@ -266,5 +272,5 @@ double PI_taylor(const int terms) {
      const double arc_tan_1_5 = arc_tan(1.0 / 5.0, terms);
      const double arc_tan_1_239 = arc_tan(1.0 / 239.0, terms);
      const double PI = 16.0 * arc_tan_1_5 - 4.0 * arc_tan_1_239;
-     return Helpers::round_num(PI, 6);
+     return Helpers::round_num(PI, DESIRED_PRECISION);
 }
