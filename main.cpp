@@ -10,15 +10,14 @@
 #include <thread>
 #include <vector>
 
+// I could have used BigInt or Arbitary Precision, but libraries on Windows are cancer.
 #define DESIRED_PRECISION 12
 
 double PI_leibniz(int terms);
 double PI_monte_carlo(int total);
-double factorial(int number);
 double PI_ramanujan(int terms);
 double PI_gauss_legendre(int iterations);
 double PI_chudnovsky(int terms);
-double arc_tan(double x, int terms);
 double PI_taylor(int terms);
 
 static int global_counter = 0;
@@ -66,6 +65,29 @@ namespace Utility {
 };
 
 
+namespace Maths {
+     double arc_tan(const double x, const int terms) {
+          double sum{};
+          double power = x;
+          for (int i = 0; i < terms; i++) {
+               const int n = 2 * i + 1;
+               double term = power / n;
+               if (i % 2 != 0) term = -term;
+               sum += term;
+               power *= x * x;
+          }
+          return sum;
+     }
+
+     double factorial(const int number) {
+          double result = 1;
+          for (int i = 1; i <= number; i++) {
+               result *= i;
+          }
+          return result;
+     }
+};
+
 int main() {
      const double PI_1 = Utility::measure_time("Leibniz", []() {
           return PI_leibniz(10e8);
@@ -97,13 +119,6 @@ int main() {
      std::cout << std::flush;
 }
 
-/*
- *   Each iteration does modulo, assignment, multiplication, addition and accumulation (+=);
- *   These operations are quite simple and relatively optimised, with modulo being arguably the least efficient.
- *   Therefore, complexity is mainly driven by the amount of iterations and scales linearly.
- *   T(n) = n * C, wherein n is the number of terms assigned to the function upon calling.
- *   Consequently, T(n) is O(n), whereas space is O(1).
- */
 double PI_leibniz(const int terms) {
      double PI = 0;
      double sign = 1.0;
@@ -115,14 +130,6 @@ double PI_leibniz(const int terms) {
      return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
-/*
- * Monte Carlo is probabilistic by nature and therefore has to call functions from the random library.
- * Each iteration does two randomisation calls, multiplication, addition, compare and increment (conditional).
- * This adds up to T(n) = n * Sum(2 * C_rng + 2 * C_mul + C_add + C_cmp + C_inc) + C_mul + C_div;
- * Wherein n is the total number of iterations (passed by the function call).
- * Time complexity scales similarly, in linear fashion and is mainly driven by the n number of iterations.
- * Therefore T(n) = O(n), whereas space is O(1).
- */
 double PI_monte_carlo(const int total) {
      const size_t thread_count = std::max<size_t>(1, std::thread::hardware_concurrency());
      const size_t it_per_thread = total / thread_count;
@@ -156,35 +163,11 @@ double PI_monte_carlo(const int total) {
      return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
-/*
- *   Factorial is iterative and avoids the overhead associated with recursive function calls.
- *   Each call multiplies all integers from 1 upto n, resulting in n multiplications.
- *   Therefore, time complexity is linear. T(n) = n * C_mul => O(n).
- *   Space complexity, on the other hand, is O(1).
- */
-double factorial(const int number) {
-     double result = 1;
-     for (int i = 1; i <= number; i++) {
-          result *= i;
-     }
-     return result;
-}
-
-/*
- *   Ramanujan's formula employs large factorials and powers.
- *   Therefore, due to floating point arithmetics and variable-size constraints,
- *   The accuracy is limited and the function is prone to overflow for n > 1
- *   Assuming factorial to be O(n) as stated prior, and used four times per iteration,
- *   The complexity explodes rapidly beyond linear scale and goes up to O(n^2 * max(i))
- *   Performance and precision will degrade unless arbitrary-precision is employed.
- *   T(n) = Sum(i = 0 to n) of [O(i) + O(4i) + O(1103 + 26390i) + O(i)^4 + pow(396, 4i)]
- *   Space, however, remains O(1).
- */
 double PI_ramanujan(const int terms) {
      double sum = 0;
      for (int i = 0; i < terms; i++) {
-          const double fact_i = factorial(i);
-          const double numerator = factorial(4 * i) * (1103.0 + 26390.0 * i);
+          const double fact_i = Maths::factorial(i);
+          const double numerator = Maths::factorial(4 * i) * (1103.0 + 26390.0 * i);
           double denominator = std::pow(fact_i, 4);
           denominator *= std::pow(396.0, 4 * i);
           sum += numerator / denominator;
@@ -193,13 +176,6 @@ double PI_ramanujan(const int terms) {
      return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
-/*
- *   Each iteration performs square root, addition, division, subtraction and multiplication.
- *   All operations are constant time (O(1)) for double-precision.
- *   Total time complexity is linear with respect to the number of iterations: T(n) = n * C.
- *   Therefore, T(n) = O(n), and space complexity is also O(1), since no additional data is stored.
- *   Despite the simplicity of per-step cost, convergence is fast and only a few iterations are required.
- */
 double PI_gauss_legendre(const int iterations) {
      double a = 1.0;
      double b = 1.0 / std::numbers::sqrt2;
@@ -217,60 +193,27 @@ double PI_gauss_legendre(const int iterations) {
      return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
-/*
- *   Fastest of the bunch though it requires high precision arithmetic.
- *   Iterations involve several factorials, large exponentiation, and high constants.
- *   Each iteration does as follows:
- *   - factorial(6i), factorial(3i), factorial(i)^3 → ~O(i)
- *   - pow(640320, 3i) → O(log(3i)) ~= O(i)
- *   - so each iteration is ~O(i), total T(n) is roughly O(n^2)
- *   Time complexity: O(n^2), Space complexity: O(1)
- */
 double PI_chudnovsky(const int terms) {
      const double C = std::pow(640320.0, 1.5) / 12.0;
      double sum = 0;
 
      for (int i = 0; i < terms; i++) {
-          const double numerator = factorial(6 * i) * (13591409.0 + 545140134.0 * i) * (i % 2 == 0 ? 1.0 : -1.0);
-          const double denominator = factorial(3 * i) * std::pow(factorial(i), 3) * std::pow(640320.0, 3 * i);
+          const double numerator = Maths::factorial(6 * i)
+          * (13591409.0 + 545140134.0 * i)
+          * (i % 2 == 0 ? 1.0 : -1.0);
+          const double denominator = Maths::factorial(3 * i)
+          * std::pow(Maths::factorial(i), 3)
+          * std::pow(640320.0, 3 * i);
           sum += numerator / denominator;
      }
      const double PI = C / sum;
      return Helpers::round_num(PI, DESIRED_PRECISION);
 }
 
-/*
- * Computes the arc tangent using its Maclaurin series expansion.
- * Maintains the running power to avoid the overload of std::pow per iteration.
- * Each iteration performs basic arithmetic.
- * Those operations take constant time, meaning each step is O(1).
- * Total time complexity scales linearly with the number of terms n: T(n) = n * C.
- * Therefore, T(n) is O(n), and space complexity is O(1) since no variable-size structures are allocated.
- */
-double arc_tan(const double x, const int terms) {
-     double sum{};
-     double power = x;
-     for (int i = 0; i < terms; i++) {
-          const int n = 2 * i + 1;
-          double term = power / n;
-          if (i % 2 != 0) term = -term;
-          sum += term;
-          power *= x * x;
-     }
-     return sum;
-}
 
-/*
- * Utilizes Machin's formula to compute PI: PI = 16 * arctan(1/5) - 4 * arctan(1/239).
- * The function makes two separate calls to the arc_tan function, bounded by n terms.
- * The subsequent operations—scalar multiplication, subtraction, and rounding—execute in constant time.
- * Because the inputs to arc_tan are small fractions (< 1), the series converges extremely rapidly.
- * Time complexity is strictly dictated by the two arc_tan evaluations: T(n) = 2 * O(n) + C.
- * Consequently, the overall time complexity simplifies to O(n), while space complexity remains O(1).
- */
 double PI_taylor(const int terms) {
-     const double arc_tan_1_5 = arc_tan(1.0 / 5.0, terms);
-     const double arc_tan_1_239 = arc_tan(1.0 / 239.0, terms);
+     const double arc_tan_1_5 = Maths::arc_tan(1.0 / 5.0, terms);
+     const double arc_tan_1_239 = Maths::arc_tan(1.0 / 239.0, terms);
      const double PI = 16.0 * arc_tan_1_5 - 4.0 * arc_tan_1_239;
      return Helpers::round_num(PI, DESIRED_PRECISION);
 }
