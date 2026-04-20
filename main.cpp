@@ -62,12 +62,6 @@ namespace Utility {
 
 
 int main() {
-     /*
-      *   Ramanujan and Chudnovsky overflow as they require arbitrary precision.
-      *   Even one term will overflow because of the explosive size of factorials.
-      *   As it is not readily available in C++, I will not fix it.
-      *   Honestly makes me wish this was Zig, a f128 would come in handy here...
-      */
      const double PI_1 = Utility::measure_time("Leibniz", []() {
           return PI_leibniz(10000000);
      });
