@@ -76,15 +76,24 @@ int main() {
           return PI_monte_carlo(100000000);
      });
 
-     const double PI_3 = Utility::measure_time("Legendre", []() {
+     const double PI_3 = Utility::measure_time("Ramanujan", []() {
+          return PI_ramanujan(2);
+     });
+
+     const double PI_4 = Utility::measure_time("Legendre", []() {
           return PI_gauss_legendre(30);
      });
 
-     const double PI_4 = Utility::measure_time("Taylor", []() {
+     const double PI_5 = Utility::measure_time("Chudnovsky", []() {
+          return PI_chudnovsky(1);
+     });
+
+     const double PI_6 = Utility::measure_time("Taylor", []() {
           return PI_taylor(100000);
      });
 
-     const std::vector results{PI_1, PI_2, PI_3, PI_4};
+
+     const std::vector results{PI_1, PI_2, PI_3, PI_4, PI_5, PI_6};
      std::cout << "\x1b[1;34m[END]:\x1b[34m Calculated PI a total of " << results.size() << " times.\n\x1b[0m";
      std::cout << std::flush;
 }
