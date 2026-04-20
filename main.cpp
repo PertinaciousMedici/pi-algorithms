@@ -63,11 +63,11 @@ namespace Utility {
 
 int main() {
      const double PI_1 = Utility::measure_time("Leibniz", []() {
-          return PI_leibniz(10000000);
+          return PI_leibniz(10e8);
      });
 
      const double PI_2 = Utility::measure_time("Monte Carlo", []() {
-          return PI_monte_carlo(100000000);
+          return PI_monte_carlo(10e8);
      });
 
      const double PI_3 = Utility::measure_time("Ramanujan", []() {
@@ -75,7 +75,7 @@ int main() {
      });
 
      const double PI_4 = Utility::measure_time("Legendre", []() {
-          return PI_gauss_legendre(30);
+          return PI_gauss_legendre(4);
      });
 
      const double PI_5 = Utility::measure_time("Chudnovsky", []() {
@@ -83,7 +83,7 @@ int main() {
      });
 
      const double PI_6 = Utility::measure_time("Taylor", []() {
-          return PI_taylor(100000);
+          return PI_taylor(24);
      });
 
 
